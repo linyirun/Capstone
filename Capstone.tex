@@ -1,0 +1,434 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+%\usepackage{mathabx}
+\usepackage{graphics,graphicx}
+\usepackage{subcaption}
+\usepackage{caption}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+
+\usepackage[table]{colortbl}
+
+\usetikzlibrary{positioning}
+\usetikzlibrary{arrows.meta}
+
+\setlength\parindent{15pt}
+
+\thispagestyle{plain}
+
+\begin{document}
+
+\begin{center}
+    \Large
+    \textbf{An Analysis of Tree Algorithms and Tree Data Structures}
+        
+    \vspace{0.4cm}
+    \large{Bill Lin}
+\end{center}
+
+\section{Introduction}
+
+The purpose of this paper is to analyze a certain collection of tree algorithms and tree data structures, and to give an intuition as to why they work.
+
+We will first define what a tree is and look at its properties. A tree is defined as a \textbf{connected acyclic undirected graph}. The \textbf{connected} part means that every node can be reached from every other node. \textbf{Acyclic} means that the tree does not have a sequence of edges that joins a sequence of vertices that starts and ends on the same vertex (basically, no cycles). \textbf{Undirected} means that the edges in the tree go in both directions. As a result of these properties, trees will always have $n - 1$ edges, where $n$ is the number of nodes.
+
+Why would trees always have $n - 1$ edges? Let's start with the simplest case: a single node. With only a single node, there will be no edges, as the only edge we could add is from the node to itself, which would create a self-loop and would create a cycle. If we were to add a new node, we would need exactly one edge from the previous connected tree to the new node in order to make the graph connected. So, that means the tree starts with $1$ node and no edges, and every new node added would require one extra edge. Thus, the number of nodes will always be one more than the number of edges in the tree.
+
+Here are a couple of examples of trees:\\
+
+\noindent
+\begin{minipage}{.5\textwidth}
+\centering
+    \begin{tikzpicture}[node distance={1.5cm}, every node/.style = {draw, circle}, minimum size=0.75cm, baseline = {(0, 0)}]
+    \node[] (1) at (0, 0) {1};
+    \node[] (2) [below left = 1cm of 1] {2};
+    \node[] (3) [below right = 1cm of 1] {3};
+    \node[] (4) [below right of = 3] {4};
+    \node[] (5) [below left = 0.5cm of 2] {5};
+    \node[] (6) [below right = 0.5cm of 2] {6};
+    
+    \draw[] (1) -- (2);
+    \draw[] (1) -- (3);
+    \draw[] (3) -- (4);
+    \draw[] (2) -- (6);
+    \draw[] (2) -- (5);
+    \end{tikzpicture}
+\end{minipage}
+\begin{minipage}{.5\textwidth} % second figure
+\centering
+\begin{tikzpicture}[node distance={1.5cm}, main/.style = {draw, circle}, baseline={(0, 0)}] 
+    \node[main] (1) {$x_1$}; 
+    \node[main] (2) [above right of=1] {$x_2$}; 
+    \node[main] (3) [below right of=1] {$x_3$}; 
+    \node[main] (4) [above right of=3] {$x_4$}; 
+    \node[main] (5) [above right of=4] {$x_5$}; 
+    \node[main] (6) [below right of=4] {$x_6$}; 
+    \draw[] (1) -- node[midway, above left] {5} (2); 
+    \draw[] (1) -- node[midway, above right] {7} (3); 
+    \draw[] (2) -- node[midway, below left] {8} (4);
+    \draw[] (4) -- node[midway, above right] {6} (6);
+    
+    \draw (2) to node[midway, above] {2} (5); 
+    \end{tikzpicture}
+\end{minipage}
+
+\section{Minimum Spanning Trees}
+A \textbf{minimum spanning tree (MST)} of a graph is some subset of the edges where the resulting subset of edges forms a tree that connects all of the nodes in the graph, with the smallest possible sum of edge weights. To find the minimum spanning tree, there are two algorithms that is normally used: \textbf{Kruskal's}, and \textbf{Prim's}.
+
+Note: If the graph is not connected, then there is no MST.
+
+\subsection{Kruskal's MST Algorithm}
+\textit{Prerequisites: Disjoint Set Union}
+
+\textbf{Kruskal's algorithm} is a greedy algorithm that is guaranteed to give a minimum spanning tree. If there are multiple MSTs, it will give any one of them.
+
+
+Firstly, we will sort all the edges in the graph by increasing order of edge weight. Then, we will loop through all of the edges in the sorted order, and we will only add the edge \textbf{if and only if it connects two nodes in separate components.} This means that we will need a quick way to determine if two nodes are in the same set. We will need a data structure that is able to merge two nodes from separate components, and which can also determine if two nodes are in the same set, with relatively fast time complexity. The \textbf{disjoint set union} data structure is the perfect fit for this, as it can merge two components and it can also find if two nodes are in the same component, both with $O(\log n)$\footnote{In this paper, $\log$ is defined as $\log_2.$} time complexity.
+
+The following algorithm only finds the cost of the MST. To find the edges in the resulting MST, we can just add the edges into a list.
+
+\subsubsection{Pseudo-code for Kruskal's}
+\begin{lstlisting}
+edges = ... // list of edges, in the form [cost, edge begin, edge end]
+sort edges by cost
+
+dsu = initialize disjoint set union
+total_cost = 0
+
+for each [edge_cost, u, v] in edges:
+    if u and v are not in the same component:
+        add edge_cost to total_cost
+        merge node u and v in the dsu
+\end{lstlisting}
+
+\subsubsection{Time complexity analysis}
+Sorting the edges takes $m\log m$ time, and merging in the DSU takes either $O(\log n)$ or $O(\alpha(n))$ (where $\alpha(n)$ is the \href{https://en.wikipedia.org/wiki/Ackermann_function}{inverse Ackermann function}), depending on the implementation. We will have to merge nodes every time we add a new edge. Since there are $n - 1$ edges, the total amount of time taken will be either $O(n \log n)$ or $O(n \cdot \alpha(n))$. Thus, the final time complexity is $O(n\log n + m\log n)$ or $O(n \cdot \alpha(n) + m\log n)$.
+
+\subsubsection{Intuition for Kruskal's}
+Why would this method always work? It always selects the unprocessed edge with least cost, but what if this isn't optimal to select this edge?
+
+Let's think about this. We will call the cost of the unprocessed edge with least cost $c$, and the two vertices it connects $u$ and $v$. If $u$ and $v$ are already in the same component, we don't add the edge. However, if they are not, it is always optimal to add this edge into the MST. Why? Since, in the final MST, all vertices are in the same connected component and there must be $n - 1$ edges, by not choosing this edge, we will have to choose another unprocessed edge later on that connects $u$ and $v$. But remember that we have already sorted the list of edges by their edge weight, so any other unprocessed edge will have an edge cost that is greater than $c$. Therefore, it is always optimal to select the unprocessed edge with least cost if it connects two different components.
+
+\subsubsection{Example of Kruskal's}
+Let's say we have the graph below, and we want to find the MST of this graph.
+
+\begin{center}
+     \begin{tikzpicture}[node distance={2cm}, main/.style = {draw, circle}, minimum size=0.75cm, every edge/.style = {draw = black}]
+     \node[main] (1) {1};
+     \node[main] (2) [right of = 1] {2};
+     \node[main] (3) [right of = 2]{3};
+     \node[main] (4) [below of  = 1]{4};
+     \node[main] (5) [right of = 4] {5};
+     \node[main] (6) [right of = 5] {6};
+     
+     \begin{scope}[>={Stealth[black]},
+              every node/.style={fill=white, circle, inner sep = 0pt, minimum size = 0.1cm},
+              every edge/.style={draw=black,thick}]
+     \path
+     (1) edge node  {$5$} (2)
+     (1) edge node  {$2$} (5)
+     (1) edge [bend left = 45] node {3} (3)
+     (2) edge node {$6$} (3)
+     (2) edge node {$5$} (1)
+     (2) edge node {$1$} (5)
+     (3) edge node {$5$} (6)
+     (4) edge [bend right = 45] node {7} (6)
+     (5) edge node {$3$} (6);
+     
+%     \path [] (1) edge node {5} (2);
+%     \draw[] (1) -- node[midway, above, yshift = -1mm] {5} (2); 
+%     
+%     \draw (1) -- node[midway, yshift = 2mm, xshift = 1mm] {6} (5);
+%     \draw (1) to [out=90, in = 90, looseness = 0.5] (3);
+%     
+%     \draw (2) -- (3);
+%     \draw (2) -- (5);
+%     
+%     \draw (4) to [out=-90, in = -90, looseness = 0.5] (6);
+%     \path (4) edge[] node ($7$) (6);
+%     \draw (3) -- (6);
+%     \draw (5) -- (6);
+     \end{scope}
+     \end{tikzpicture}
+ \end{center}
+ 
+ Here is the list of all the edges, sorted by their edge weight. Edges with equal weights are just placed in random order, since it won't affect the MST.
+ 
+ \begin{center}
+ \begin{tabular}{ |c|c|c|}
+ \hline
+ weight & first node & second node \\
+ \hline
+ 1 & 2 & 5 \\
+ \hline
+ 2 & 1 & 5 \\
+  \hline
+ 3 & 1 & 3 \\
+  \hline
+ 3 & 5 & 6 \\
+  \hline
+ 5 & 1 & 2 \\
+  \hline
+ 6 & 2 & 3 \\
+  \hline
+ 7 & 4 & 6 \\
+ \hline 
+ \end{tabular}
+ \end{center}
+ 
+This following table will display which set each node is in, handled by the disjoint set union data structure. For simplicity purposes, while merging two sets, it will choose the set with the parent with the least number, even though in practice, the DSU will use other methods of merging. Changes are highlighted throughout the steps.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+Node & 1 & 2 & 3 & 4 & 5 & 6\\
+\hline
+Parent & 1 & 2 & 3 & 4 & 5 & 6 \\
+\hline
+\end{tabular}
+\end{center}
+ 
+\noindent Note: [$u$, $v$] refers to the edge connecting node $u$ and node $v$.
+ 
+ 
+Let's run the algorithm, step by step. First of all, we will choose the edge [2, 5], since it has the lowest cost. Nodes 2 and 5 are in different sets, so let's merge nodes 2 and 5 and add this edge to the MST.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+Node & 1 & 2 & 3 & 4 & \cellcolor[gray]{0.75}5 & 6\\
+\hline
+Parent & 1 & 2 & 3 & 4 & \cellcolor[gray]{0.75}2 & 6 \\
+\hline
+\end{tabular}
+\end{center}
+
+Next, we consider the edge [1, 5]. Nodes 1 and 5 are in different sets, so let's merge them in the DSU and add this edge to the MST. Since node 2 is also part of the same set as 5, we will also set parent of 2 to 1.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+Node & 1 & \cellcolor[gray]{0.75}2 & 3 & 4 & \cellcolor[gray]{0.75}5 & 6\\
+\hline
+Parent & 1 & \cellcolor[gray]{0.75}1 & 3 & 4 & \cellcolor[gray]{0.75}1 & 6 \\
+\hline
+\end{tabular}
+\end{center}
+
+For edges [1, 3] and [5, 6], both nodes in the edges are in different sets, so the same merging process applies. Changes are shown below.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+Node & 1 & 2 & \cellcolor[gray]{0.75}3 & 4 & 5 & \cellcolor[gray]{0.75}6\\
+\hline
+Parent & 1 & 1 &\cellcolor[gray]{0.75}1 & 4 & 1 & \cellcolor[gray]{0.75}1 \\
+\hline
+\end{tabular}
+\end{center}
+
+Now we consider the edge [1, 2]. Both nodes 1 and 2 are in the same set (set 1), so we will skip over this edge. Similarity, for the edge [2, 3], nodes 2 and 3 are also both in set 1, so this edge is skipped. Recall: if we add an edge, whose two nodes it connects are in the same set, we don't make any new connections, so we can skip over this edge. No changes are made.
+
+Lastly, considering edge [4, 6]. Node 4 is in set 4, and node 6 is in set 1, so we will merge these two.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+Node & 1 & 2 & 3 & \cellcolor[gray]{0.75}4 & 5 & 6\\
+\hline
+Parent & 1 & 1 & 1 & \cellcolor[gray]{0.75}1 & 1 & 1 \\
+\hline
+\end{tabular}
+\end{center}
+ 
+Since every node is in the same set, the graph made by the edges we chose is connected. Thus, the resulting minimum spanning tree, determined by the edges we took, is the following (colored in red):
+
+\begin{center}
+     \begin{tikzpicture}[node distance={2cm}, main/.style = {draw, circle}, minimum size=0.75cm, every edge/.style = {draw = black}]
+     \node[main] (1) {1};
+     \node[main] (2) [right of = 1] {2};
+     \node[main] (3) [right of = 2]{3};
+     \node[main] (4) [below of  = 1]{4};
+     \node[main] (5) [right of = 4] {5};
+     \node[main] (6) [right of = 5] {6};
+     
+     \begin{scope}[>={Stealth[black]},
+              every node/.style={fill=white, circle, inner sep = 0pt, minimum size = 0.1cm},
+              every edge/.style={draw=black}]
+     \path
+     (1) edge [dashed] node  {$5$} (2)
+     (1) edge [draw=red, very thick] node  {$2$} (5)
+     (1) edge [draw=red, very thick, bend left = 45] node {3} (3)
+     (2) edge [dashed] node {$6$} (3)
+     (2) edge [dashed] node {$5$} (1)
+     (2) edge [draw=red, very thick] node {$1$} (5)
+     (3) edge [dashed] node {$5$} (6)
+     (4) edge [draw=red, very thick, bend right = 45] node {7} (6)
+     (5) edge [draw=red, very thick] node {$3$} (6);
+     
+     \end{scope}
+     \end{tikzpicture}
+ \end{center}
+
+The cost of the MST is the sum of the edges we took, which is $1 + 2 + 3 + 3 + 7 = 43$. The edges in our MST are [1, 3], [1, 5], [2, 5], [5, 6], and [4, 6].
+
+% \draw[] ()
+ 
+\subsection{Prim's MST Algorithm}
+\textit{Recommended: Dijkstra}
+
+\textbf{Prim's algorithm} is also a greedy algorithm which, similar to Kruskal's, finds the minimum spanning tree of a graph.
+Prim's algorithm is very similar to Dijkstra. We need a priority queue that sorts by the cheapest edge cost. We will also need a boolean array to mark which nodes we have already visited. We then select any node (typically node $1$), mark the node as visited, and then push all the edges into a priority queue. We take the cheapest edge in the priority queue and process it. We will only add the edge into the MST if it connects a marked node and an unmarked node. This process is repeated until we have $n - 1$ edges, which will give us the MST.
+
+In Prim's algorithm, we do not need a disjoint set union like Kruskal's, as we are using the boolean array to determine if we take edges or not.
+
+\subsubsection{Pseudo-code for Prim's}
+
+\begin{lstlisting}
+
+adj = ... // an adjacency list, storing [destination, cost]
+q = priority queue, sorting by least edge weight // pairs of [dest, cost]
+
+vis = boolean array of size n, initialized to false
+push [1, 0] into q // push node 1 into the priority queue, with cost 0 
+		   // so it doesn't affect MST cost
+
+total = 0 // cost of the MST
+while q is not empty:
+	dest = q.first()'s dest, cost = q.first()'s cost
+	pop q's first element
+	
+	if dest is already visited
+		continue
+		
+	vis[dest] = true
+	add cost to total
+	
+	for [to, cost] in adj[dest]:
+		push [to, cost] into q
+\end{lstlisting}
+
+\subsubsection{Time complexity analysis}
+The main bottleneck for this algorithm is the priority queue, as there are a total of $m$ edges that needs to be inserted in the priority queue, each taking $O(\log n)$ time. Other operations like initializing the boolean array, popping top element from priority queues, etc. are all either $O(n)$ or $O(1)$, so the final time complexity of this algorithm is $O(m\log n)$.
+
+\subsubsection{Intuition for Prim's}
+Prim's will keep taking the minimum cost edge that connects a marked node to an unmarked node until the MST is found. This is quite similar to Dijkstra. It should seem reasonable that a greedy method would work for MST, just like how it works for finding shortest paths. By taking the edge with least cost that connects a marked node to an unmarked one, we keep connecting two separate components while adding the least possible cost to our total MST cost. However, at first glance, it seems like negative weights may cause this algorithm to give an non-optimal result.
+
+Dijkstra's does not work for negative weights, so why does Prim's? Since we know that we will have $n - 1$ edges, we can just add a big constant factor $c$ such that $c \geq \lvert \text{cost of smallest edge} \rvert$, so that all of the edges becomes positive, and we can just subtract $c \cdot (n - 1)$ from the final. But we didn't add $c$ to all the edges, so why does this still work?
+
+Consider the following graph:
+\begin{center}
+     \begin{tikzpicture}[node distance={2cm}, main/.style = {draw, circle}, minimum size=0.75cm, every edge/.style = {draw = black}]
+     \node[main] (1) {1};
+     \node[main] (2) [above right of = 1] {2};
+     \node[main] (3) [right of = 1]{3};
+     
+     \begin{scope}[>={Stealth[black]},
+%              every node/.style={fill=white, circle, inner sep = 0pt, minimum size = 0.1cm},
+              every edge/.style={draw=black, auto}]
+     \path
+     (1) edge node  {$2$} (2)
+     (1) edge node {$1$} (3)
+     (2) edge node {$-5$} (3);
+     \end{scope}
+     \end{tikzpicture}
+ \end{center}
+ 
+ We would first start from node 1. We would take the edge [1, 3] first, and then immediately consider the edge with a negative cost. It would not be optimal to take edge [1, 2] just because it might lead us to a negative edge weight, since if we can reach the node with a negative cost edge using edges that have lower cost, it would result in a lower total cost of the MST.
+ 
+ \textit{note: this explanation might not be clear, maybe add on to it}
+
+\section{Binary Lifting and Lowest Common Ancestor}
+Let's say we have a tree, and we have $q$ queries, each one of them asking us to find the $k$-th parent of a node $u$. We could just have an array that keeps track of every node's parent, start at node $u$ just move up the tree $k$ times, but this will give us a time complexity of $O(k)$. If there are $q = 10^5$ queries, our final time complexity is $O(qk)$, which in most cases will be too slow for a given problem. Therefore, we will use a technique called \textbf{binary lifting} to reduce each one of these queries to $O(\log n)$.
+
+\subsection{DFS Traversal}
+The first step is to do a DFS traversal on the tree. We keep a variable called \textit{timer} to keep track of when we enter and exit each node. We start at the root of the tree (again, usually node 1), and run a DFS until all the nodes are visited. Every time we process a node, we add one to the timer and store this value in an array, and we do the same when we finish processing the node, storing this value in another array.
+
+Why is this necessary? While processing the queries, we need a quick way to see if one node is the ancestor of another. The information we get from the DFS traversal will allow us to do this in $O(1)$.
+
+\subsubsection{DFS Traversal Code}
+\begin{lstlisting}
+let n = number of nodes in the tree
+adj = adjacency list of tree
+let tin = integer array of size n // time in for each node
+let tout = integer array of size n // time out for each node
+
+let timer = 0
+void dfs(int node, int par) {
+	timer++
+	tin[node] = timer
+	for child in adj[node]:
+		if child != parent
+			dfs(child, node)
+	
+	timer++
+	tout[node] = timer
+}
+\end{lstlisting}
+
+
+\subsubsection{Determining if $u$ is an ancestor of $v$ in constant time}
+Now that we have completed the DFS traversal, we can now determine whether $u$ is an ancestor of $v$ in constant time using our \textit{tin} and \textit{tout} arrays. $u$ is an ancestor of $v$ if and only if \textbf{tin[u] $\leq$ tin[v] and tout[u] $\geq$ tout[v]}. tin[u] $\leq$ tin[v] is asking if we have entered node $u$ before node $v$, and tout[u] $\geq$ tout[v] is asking whether we have exited node $v$ before node $u$. The only way that this condition is true is if $v$ is in the subtree of $u$, and thus node $u$ would be an ancestor of node $v$.
+
+\subsection{Preprocessing Jumps}
+This is the main part of the binary lifting algorithm. For each node, we will calculate the $2^k$-th ancestor for $0 \leq k \leq \lceil \log (n) \rceil$. This allows us to "jump up" any power of two, from any node. We can calculate the jumps while doing the DFS. Let us define an 2-d array lift[][], with first dimension of size $n$ and the second dimension with size $\lceil \log (n) \rceil$. For simplicity purposes, let $k = \lceil \log (n) \rceil$. Every time we process a node $u$, we set lift[u][0] = parent of $u$, and then we can loop $i$ from 1 to $k$, defining lift[u][i] = lift[lift[u][i - 1]][i - 1]. This means that we go up $2^{n - 1}$ nodes from the $2^{n - 1}$-th parent of $u$. This works because going up by $2^{n - 1}$ and then $2^{n - 1}$ is the same as going up $2^{n}$: $2^{n - 1} + 2^{n - 1} = 2(2^{n - 1}) = 2^n$. Since we are doing a DFS, any jump from a parent node is already calculated, so lift[lift[u][i - 1]][i - 1] will already be calculated since node lift[u][i - 1] will be processed before node $u$.
+
+After processing the jumps, we can go up any amount in the tree from any node in $O(\log n)$ time. Let's say we are asked to find the $k$-th parent from the node. This is the same as jumping up $k$ times. We can loop $i$ from $\lceil \log (n) \rceil$ to 0, and every time $2^i \leq k$, we can jump up $2^i$ nodes and subtract $2^i$ from $k$. 
+
+\subsubsection{Binary Lifting Code}
+\begin{lstlisting}
+let n = number of nodes in the tree
+adj = adjacency list of tree
+let tin = integer array of size n // time in for each node
+let tout = integer array of size n // time out for each node
+
+let k = ceil(log(n))
+let lift = 2d array of size n and size k
+
+
+let timer = 0
+void dfs(int node, int par) {
+	timer++
+	tin[node] = timer
+	
+	lift[node][0] = par
+	for i from 1 to k-1:
+		lift[node][i] = lift[lift[node][i-1]][i-1]
+	
+	for child in adj[node]:
+		if child != parent
+			dfs(child, node)
+	
+	timer++
+	tout[node] = timer
+}
+\end{lstlisting}
+
+Notice how we simultaneously calculated jumps while doing the DFS traversal.
+
+\subsection{Time complexity analysis}
+We can calculate all the jumps in $O(1)$. Since there are $\lceil \log (n) \rceil$ "jumps" we need to calculate and $n$ nodes, our final time complexity will be $O(n \log n)$.
+
+
+\subsection{Lowest Common Ancestor}
+
+
+
+\section{Segment Tree}
+
+\section{Euler Tour and Range Queries on Trees}
+
+\section{Dynamic Programming on Trees}
+Another important property in any rooted tree, every node will have at one parent except the root node. We can use this fact in order to solve problems using dynamic programming, as we will usually only have to consider the state of the parent node in our DP transitions. This technique is called \textbf{dynamic programming on trees}.
+
+As an example of this technique in action, we will solve S5 from the \href{https://dmoj.ca/problem/ccc22s5}{2022 Senior Canadian Computing Competition: Good Influencers}.
+
+\subsection{Example of Tree DP}
+Summary of the problem: 
+
+
+
+\end{document}
