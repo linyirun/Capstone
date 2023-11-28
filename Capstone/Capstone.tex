@@ -9,8 +9,6 @@
 \usepackage{listings}
 \usepackage{hyperref}
 \usepackage{indentfirst}
-\usepackage{xurl}
-\usepackage[letterpaper, total={6in,9in}]{geometry}
 
 \usepackage[table]{colortbl}
 
@@ -25,7 +23,7 @@
 
 \begin{center}
     \Large
-    \textbf{An Analysis of Tree Algorithms and Data Structures}
+    \textbf{An Analysis of Tree Algorithms and Tree Data Structures}
         
     \vspace{0.4cm}
     \large{Bill Lin}
@@ -246,7 +244,7 @@ Parent & 1 & 1 & 1 & \cellcolor[gray]{0.75}1 & 1 & 1 \\
 \end{tabular}
 \end{center}
  
-Since every node is in the same set, the graph made by the edges we chose is connected. Thus, the resulting minimum spanning tree, determined by the edges we took, is the following (indicated by the solid red lines):
+Since every node is in the same set, the graph made by the edges we chose is connected. Thus, the resulting minimum spanning tree, determined by the edges we took, is the following (colored in red):
 
 \begin{center}
      \begin{tikzpicture}[node distance={2cm}, main/.style = {draw, circle}, minimum size=0.75cm, every edge/.style = {draw = black}]
@@ -341,105 +339,46 @@ Consider the following graph:
  
  We would first start from node 1. We would take the edge [1, 3] first, and then immediately consider the edge with a negative cost. It would not be optimal to take edge [1, 2] just because it might lead us to a negative edge weight, since if we can reach the node with a negative cost edge using edges that have lower cost, it would result in a lower total cost of the MST.
  
-\section{Binary Lifting, Euler Tour, and Lowest Common Ancestor}
+ \textit{note: this explanation might not be clear, maybe add on to it}
+
+\section{Binary Lifting and Lowest Common Ancestor}
 Let's say we have a tree, and we have $q$ queries, each one of them asking us to find the $k$-th parent of a node $u$. We could just have an array that keeps track of every node's parent, start at node $u$ just move up the tree $k$ times, but this will give us a time complexity of $O(k)$. If there are $q = 10^5$ queries, our final time complexity is $O(qk)$, which in most cases will be too slow for a given problem. Therefore, we will use a technique called \textbf{binary lifting} to reduce each one of these queries to $O(\log n)$.
 
-\subsection{Preprocessing Jumps}
-For each node, we will calculate the $2^k$-th ancestor for $0 \leq k \leq \lceil \log (n) \rceil$. This allows us to "jump up" any power of two, from any node. We can calculate the jumps while doing the DFS. Let us define an 2-d array lift[][], with first dimension of size $n$ and the second dimension with size $\lceil \log (n) \rceil$. Every time we process a node $u$, we set lift[u][0] = parent of $u$, and then we can loop $i$ from 1 to $\lceil \log (n)\rceil - 1$, defining lift[u][i] = lift[lift[u][i - 1]][i - 1]. This means that we go up $2^{n - 1}$ nodes from the $2^{n - 1}$-th parent of $u$. This works because going up by $2^{n - 1}$ and then $2^{n - 1}$ again is the same as going up $2^{n}$: $2^{n - 1} + 2^{n - 1} = 2(2^{n - 1}) = 2^n$. Since we are doing a DFS, any jump from a parent node is already calculated, so lift[lift[u][i - 1]][i - 1] will already be calculated since node lift[u][i - 1] will be processed before node $u$.
-
-After processing the jumps, we can go up any amount in the tree from any node in $O(\log n)$ time. Let's say we are asked to find the $k$-th parent from the node. This is the same as jumping up $k$ times. We can loop $i$ from $\lceil \log (n) \rceil$ to 0, and every time $2^i \leq k$, we can jump up $2^i$ nodes and subtract $2^i$ from $k$. Eventually, $k$ will equal 0, and thus we will have jumped up the desired amount of nodes.
-
-\subsubsection{Binary Lifting Code}
-The code in this entire section is based off of the cp-algorithms article "Lowest Common Ancestor - Binary Lifting." Click \href{https://cp-algorithms.com/graph/lca_binary_lifting.html}{this} to see more.
-\begin{lstlisting}
-let n = number of nodes in the tree
-adj = adjacency list of tree
-
-let k = ceil(log(n))
-let lift = 2d array of size n and size k + 1
-
-let timer = 0
-void dfs(int node, int par) {
-	lift[node][0] = par
-	for i from 1 to k-1:
-		lift[node][i] = lift[lift[node][i-1]][i-1]
-	
-	for child in adj[node]:
-		if child != parent
-			dfs(child, node)
-}
-\end{lstlisting}
-
-\subsubsection{Time complexity analysis}
-We can calculate all the "jumps" in $O(1)$. Since there are $\lceil \log (n) \rceil$ jumps we need to calculate for all of $n$ nodes, the time complexity will be $O(n \log n)$.
-
-\subsection{Lowest Common Ancestor}
-For two nodes $u_1$ and $u_2$, the lowest common ancestor $v$ is the farthest node from the root which has both $u_1$ and $u_2$ as descendants. We define a $v$ to be a descendant of $u$ if the path between $u$ and $v$ only goes "down" the tree. More formally, it is any node that can be reached as long as we cannot choose the edge that goes from the node we're currently on to its parent node. A node is also defined to be a descendant of itself, so it is possible that $v$ is one of $u_1$ or $u_2$. 
-
-Consider the following tree, rooted at 1:
-\begin{center}
-     \begin{tikzpicture}[node distance={1.5cm}, main/.style = {draw, circle}, minimum size=0.75cm, every edge/.style = {draw = black}]
-     \node[main] (1) at (0, 0) {1};
-     \node[main] (2) at (-1, -1.5) {2};
-     \node[main] (3) at (1, -1.5) {3};
-     \node[main] (4) at (0, -3) {4};
-     \node[main] (5) at (1, -3) {5};
-     \node[main] (6) at (2, -3) {6};
-     \node[main] (7) at (-0.5, -4.5) {7};
-     \node[main] (8) at (0.5, -4.5) {8};
-     
-     \begin{scope}[>={Stealth[black]},
-              every node/.style={fill=white, circle, inner sep = 0pt, minimum size = 0.1cm},
-              every edge/.style={draw=black,thick}]
-     \path
-     (1) edge (2)
-     (1) edge (3)
-     (3) edge (4)
-     (3) edge (5)
-     (3) edge (6)
-     (3) edge (6)
-     (4) edge (7)
-     (4) edge(8);
-     \end{scope}
-     \end{tikzpicture}
- \end{center}
-
-Let's take a look at an example query. Let's find the LCA between nodes 7 and 6. There are two nodes that have both 6 and 8 as descendants: nodes 1 and 3, as they can both reach nodes 6 and 7 by using the blue edges, and we can see that we the paths only go "down" the tree. We will take node 3 as it is farther away from the root node (node 1), than node 1.
-
-\begin{center}
-     \begin{tikzpicture}[node distance={1.5cm}, main/.style = {draw, circle}, minimum size=0.75cm, every edge/.style = {draw = black}]
-     \node[main] (1) at (0, 0) {1};
-     \node[main] (2) at (-1, -1.5) {2};
-     \node[main] (3) at (1, -1.5) {3};
-     \node[main] (4) at (0, -3) {4};
-     \node[main] (5) at (1, -3) {5};
-     \node[main] (6) at (2, -3) {6};
-     \node[main] (7) at (-0.5, -4.5) {7};
-     \node[main] (8) at (0.5, -4.5) {8};
-     
-     \begin{scope}[>={Stealth[black]},
-              every node/.style={fill=white, circle, inner sep = 0pt, minimum size = 0.1cm},
-              every edge/.style={draw=black,thick}]
-     \path
-     (1) edge (2)
-     (1) edge [draw = blue](3)
-     (3) edge [draw = blue](4)
-     (3) edge (5)
-     (3) edge [draw = blue](6)
-     (4) edge [draw = blue](7)
-     (4) edge (8);
-     \end{scope}
-     \end{tikzpicture}
- \end{center}
- 
- Now, how can we calculate the LCA of two nodes quickly?
-
-\subsection{DFS Traversal/Euler Tour}
-The first step is to do a \textbf{DFS traversal} on the tree. We keep a variable called \textit{timer} to keep track of when we enter and exit each node. We start at the root of the tree (again, usually node 1), and run a DFS until all the nodes are visited. Every time we process a node, we add one to the timer and store this value in an array, and we do the same when we finish processing the node, storing this value in another array. This is also called the \textbf{Euler tour} of the tree.
+\subsection{DFS Traversal}
+The first step is to do a DFS traversal on the tree. We keep a variable called \textit{timer} to keep track of when we enter and exit each node. We start at the root of the tree (again, usually node 1), and run a DFS until all the nodes are visited. Every time we process a node, we add one to the timer and store this value in an array, and we do the same when we finish processing the node, storing this value in another array.
 
 Why is this necessary? While processing the queries, we need a quick way to see if one node is the ancestor of another. The information we get from the DFS traversal will allow us to do this in $O(1)$.
 
-\subsubsection{DFS Traversal/Euler Tour Code}
+\subsubsection{DFS Traversal Code}
+\begin{lstlisting}
+let n = number of nodes in the tree
+adj = adjacency list of tree
+let tin = integer array of size n // time in for each node
+let tout = integer array of size n // time out for each node
+
+let timer = 0
+void dfs(int node, int par) {
+	timer++
+	tin[node] = timer
+	for child in adj[node]:
+		if child != parent
+			dfs(child, node)
+	
+	timer++
+	tout[node] = timer
+}
+\end{lstlisting}
+
+
+\subsubsection{Determining if $u$ is an ancestor of $v$ in constant time}
+Now that we have completed the DFS traversal, we can now determine whether $u$ is an ancestor of $v$ in constant time using our \textit{tin} and \textit{tout} arrays. $u$ is an ancestor of $v$ if and only if \textbf{tin[u] $\leq$ tin[v] and tout[u] $\geq$ tout[v]}. tin[u] $\leq$ tin[v] is asking if we have entered node $u$ before node $v$, and tout[u] $\geq$ tout[v] is asking whether we have exited node $v$ before node $u$. The only way that this condition is true is if $v$ is in the subtree of $u$, and thus node $u$ would be an ancestor of node $v$.
+
+\subsection{Preprocessing Jumps}
+This is the main part of the binary lifting algorithm. For each node, we will calculate the $2^k$-th ancestor for $0 \leq k \leq \lceil \log (n) \rceil$. This allows us to "jump up" any power of two, from any node. We can calculate the jumps while doing the DFS. Let us define an 2-d array lift[][], with first dimension of size $n$ and the second dimension with size $\lceil \log (n) \rceil$. For simplicity purposes, let $k = \lceil \log (n) \rceil$. Every time we process a node $u$, we set lift[u][0] = parent of $u$, and then we can loop $i$ from 1 to $k$, defining lift[u][i] = lift[lift[u][i - 1]][i - 1]. This means that we go up $2^{n - 1}$ nodes from the $2^{n - 1}$-th parent of $u$. This works because going up by $2^{n - 1}$ and then $2^{n - 1}$ is the same as going up $2^{n}$: $2^{n - 1} + 2^{n - 1} = 2(2^{n - 1}) = 2^n$. Since we are doing a DFS, any jump from a parent node is already calculated, so lift[lift[u][i - 1]][i - 1] will already be calculated since node lift[u][i - 1] will be processed before node $u$.
+
+After processing the jumps, we can go up any amount in the tree from any node in $O(\log n)$ time. Let's say we are asked to find the $k$-th parent from the node. This is the same as jumping up $k$ times. We can loop $i$ from $\lceil \log (n) \rceil$ to 0, and every time $2^i \leq k$, we can jump up $2^i$ nodes and subtract $2^i$ from $k$. 
+
+\subsubsection{Binary Lifting Code}
 \begin{lstlisting}
 let n = number of nodes in the tree
 adj = adjacency list of tree
@@ -447,7 +386,8 @@ let tin = integer array of size n // time in for each node
 let tout = integer array of size n // time out for each node
 
 let k = ceil(log(n))
-let lift = 2d array of size n and size k + 1
+let lift = 2d array of size n and size k
+
 
 let timer = 0
 void dfs(int node, int par) {
@@ -469,170 +409,26 @@ void dfs(int node, int par) {
 
 Notice how we simultaneously calculated jumps while doing the DFS traversal.
 
+\subsection{Time complexity analysis}
+We can calculate all the jumps in $O(1)$. Since there are $\lceil \log (n) \rceil$ "jumps" we need to calculate and $n$ nodes, our final time complexity will be $O(n \log n)$.
 
-\subsubsection{Determining if $u$ is an ancestor of $v$ in constant time}
-Now that we have completed the DFS traversal, we can now determine whether $u$ is an ancestor of $v$ in constant time using our \textit{tin} and \textit{tout} arrays. $u$ is an ancestor of $v$ if and only if \textbf{tin[u] $\leq$ tin[v] and tout[u] $\geq$ tout[v]}. tin[u] $\leq$ tin[v] is asking if we have entered node $u$ before node $v$, and tout[u] $\geq$ tout[v] is asking whether we have exited node $v$ before node $u$. The only way that this condition is true is if $v$ is in the subtree of $u$, and thus node $u$ would be an ancestor of node $v$.
 
-The following code implements the algorithm above:
-\begin{lstlisting}
-boolean is_ancestor(int u, int v) {
-	return tin[u] <= tin[v] and tout[u] >= tout[v]
-}
-\end{lstlisting}
+\subsection{Lowest Common Ancestor}
 
-\subsection{Calculating LCA in $O(\log n)$}
-After preprocessing the jumps and doing the Euler tour, we now have all the tools we need to get the LCA of two nodes in $O(\log n)$ time. First of all, we will start with the two nodes $u$ and $v$ for which we want to find the LCA of. We check whether or not $u$ is an ancestor of $v$ and vice versa, stopping if either of this is the case. Then, we loop $i$ from $\lceil \log (n) \rceil $ to $0$, going up $2^i$ nodes if and only if the $2^i$-th parent is not an ancestor of $v$. The LCA of the two nodes will be the parent of the resulting node $u$.
 
-\subsubsection{Code}
-This code assumes the DFS traversal has already been done and that tin and tout are both processed.
-\begin{lstlisting}
-let n = number of nodes in the tree
-adj = adjacency list of tree
-let tin = integer array of size n // time in for each node
-let tout = integer array of size n // time out for each node
 
-let k = ceil(log(n))
-let lift = 2d array of size n and size k + 1
+\section{Segment Tree}
 
-boolean is_ancestor(int u, int v) {
-	return tin[u] <= tin[v] and tout[u] >= tout[v]
-}
-
-int lca(int u, int v) {
-	if (is_ancestor(u, v)) return u
-	if (is_ancestor(v, u)) return v
-	for i = k to 0:
-		if (not is_ancestor(lift[u][i], v))
-			u = lift[u][i]
-	return lift[u][0]
-}
-\end{lstlisting}
-
-\subsubsection{Intuition}
-Why does this work? Let's look at this section of code specifically:
-\begin{lstlisting}
-for i = k to 0:
-	if (not is_ancestor(lift[u][i], v))
-		u = lift[u][i]
-return lift[u][0]
-\end{lstlisting}
-
-This code is finding the highest parent of $u$ that is \textbf{not} an ancestor of $v$. If lift[u][i] is an ancestor of $v$, then we don't go up $2^i$ nodes, so this code will keep going "up" the tree, but stops right before it gets to the node which is an ancestor of $v$. Now, let's call $l$ the parent of the resulting node $u$. It should make sense that $l$ is the lowest node which has $v$ as a descendant (since our code found the highest node that isn't an ancestor of $v$) which also has the original node $u$ as a descendant (since we have only gone "up" from the original node $u$, and this entire path consists of all the ancestors of $u$).
-
-%\subsubsection{Example}
-%Say we have the following graph, and we want to get the LCA of 6 and 7. This is the same graph as shown in Section 3.2, and we the LCA is 3, but how does the algorithm get the LCA?
-%
-%\begin{center}
-%     \begin{tikzpicture}[node distance={1.5cm}, main/.style = {draw, circle}, minimum size=0.75cm, every edge/.style = {draw = black}]
-%     \node[main] (1) at (0, 0) {1};
-%     \node[main] (2) at (-1, -1.5) {2};
-%     \node[main] (3) at (1, -1.5) {3};
-%     \node[main] (4) at (0, -3) {4};
-%     \node[main] (5) at (1, -3) {5};
-%     \node[main] (6) at (2, -3) {6};
-%     \node[main] (7) at (-0.5, -4.5) {7};
-%     \node[main] (8) at (0.5, -4.5) {8};
-%     
-%     \begin{scope}[>={Stealth[black]},
-%              every node/.style={fill=white, circle, inner sep = 0pt, minimum size = 0.1cm},
-%              every edge/.style={draw=black,thick}]
-%     \path
-%     (1) edge (2)
-%     (1) edge (3)
-%     (3) edge (4)
-%     (3) edge (5)
-%     (3) edge (6)
-%     (4) edge (7)
-%     (4) edge (8);
-%     \end{scope}
-%     \end{tikzpicture}
-% \end{center}
-% 
- 
+\section{Euler Tour and Range Queries on Trees}
 
 \section{Dynamic Programming on Trees}
-\textit{Prerequisite: Basic knowledge of dynamic programming}
+Another important property in any rooted tree, every node will have at one parent except the root node. We can use this fact in order to solve problems using dynamic programming, as we will usually only have to consider the state of the parent node in our DP transitions. This technique is called \textbf{dynamic programming on trees}.
 
-Another important property in that in any rooted tree, every node will have at one parent except the root node, which has none. We can use this fact in order to solve problems using dynamic programming, as we will usually only have to consider the state of the parent node in our DP transitions. This technique is called \textbf{dynamic programming on trees}.
+As an example of this technique in action, we will solve S5 from the \href{https://dmoj.ca/problem/ccc22s5}{2022 Senior Canadian Computing Competition: Good Influencers}.
 
-As an example of this technique in action, we will take a look at S5 from the \href{https://dmoj.ca/problem/ccc22s5}{2022 Senior Canadian Computing Competition: Good Influencers}.
-
-\subsection{Example Problem}
-
-Summary of the problem statement:
-Given a tree of $n$ nodes, $n - 1$ edges and an array of size $n$ with values "Y" or "N" referring to the nodes. You are also given an integer array $c$ of size $n$, referring to the cost of each node. You can choose a node with value "Y" and pay the respective cost to turn all the node's neighbors to value "Y". Find the minimum cost to turn all nodes to "Y".
-
-\subsection{DP States and Transitions}
-Let us create a 2-dimensional array and let the first dimension represent $i$, being the $i$-th node in the graph and for each node, we will have 4 different states. Let's also define \textit{activating} a node to be the operation of paying the cost of that node in order to turn all the node's neighbors to 'Y'.
-
- Here are our DP states:
-
-dp[$i$][0] - node $i$ is currently 'N', and we don't have to activate this node. (We can still activate it if it's optimal to do so)
-
-dp[$i$][1] - node $i$ is currently 'N', and we need to activate this node.
-
-dp[$i$][2] - node $i$ is currently 'Y', and we don't have to activate this node.
-
-dp[$i$][3] - node $i$ is currently 'Y', and we need to activate this node. 
-
-Now, let's take a look at our DP transitions.
-
-dp[$i$][0] - Let's first look at the case where we don't activate this node. We can assume that the parent node will not influence this node, so this node has to be turned to 'Y' by one of its child nodes. We will then choose the cheapest option for one of the child nodes to be activated. Therefore, we have the following:
-
-$$
-\text{dp[i][0]} = \min{(\min_{\forall{\text{child}\in{i}}}(\text{dp[child][1 or 3] - dp[child][0 or 2]} + \sum{\text{dp[child][0 or 2]}}), \text{dp[i][1]})}
-$$
+\subsection{Example of Tree DP}
+Summary of the problem: 
 
 
-Similarly, we can deduce transitions for the other DP states using the same idea:
-
-$$
-\text{dp[i][1]} =\min(\text{dp[child][1 or 3] + c[i]} + \sum{\text{dp[child][2]}})
-$$
-
-$$
-\text{dp[i][2]} =\min(\sum{\text{dp[child][0 or 2]}}, \text{dp[i][3]})
-$$
-
-$$
-\text{dp[i][3]} =\min(\text{c[i]} + \sum{\text{dp[child][2]}})
-$$
-
-
-
-\textit{Note: This can also be done with only 3 states for each node by combining dp[$i$][1] and dp[$i$][3].}
-
-
-
-
-\subsection{General Approaches to Tree DP Problems}
-Since in a tree, each node will only have 1 parent (except the root, which will have 0), we can usually break up our DP states and transitions into scenarios in which:
-
-The current node has some influence on the parent node, or:
-
-The current node has no influence on the parent node.
-
-This is particularly useful in cases like the problem above, where a node influences all its neighbors.
-
-
-\section{Sources and Further Reading}
-
-\textbf{Introduction}
-
-[1] \url{https://en.wikipedia.org/wiki/Tree_(graph_theory)}
-
-[2] \url{https://en.wikipedia.org/wiki/Path_(graph_theory)}
-
-\textbf{Minimum Spanning Trees}
-
-[3] \url{https://stackoverflow.com/questions/10414043/is-minimum-spanning-tree-afraid-of-negative-weights}
-
-\textbf{Binary Lifting}
-
-[4] \url{https://cp-algorithms.com/graph/lca_binary_lifting.html}
-
-\textbf{Other}
-
-[5] \url{https://cses.fi/book/book.pdf}
 
 \end{document}
